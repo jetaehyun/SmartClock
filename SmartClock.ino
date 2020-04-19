@@ -14,17 +14,16 @@ int h, m, s;
 String hS, mS, sS;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
-uint8_t *ptr = nullptr;
 
 void setup() {
 
   matrix.begin();
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
   matrix.setTextWrap(false);
-  matrix.drawRGBBitmap(0, 16, cloud, 16, 16);
-  matrix.drawRGBBitmap(15, 16, cloud, 16, 16);
-  matrix.drawRGBBitmap(32, 16, cloud, 16, 16);
-  matrix.drawRGBBitmap(48, 16, cloud, 16, 16);
+  matrix.drawRGBBitmap(0, 16, thunderstorms, 16, 16);
+  matrix.drawRGBBitmap(15, 16, light_showers, 16, 16);
+  matrix.drawRGBBitmap(32, 16, showers, 16, 16);
+  matrix.drawRGBBitmap(48, 16, sunny_period, 16, 16);
 
   h = 0;
   m = 0;
