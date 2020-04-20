@@ -1,18 +1,23 @@
+#include <NTPClient.h>
 #include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
 
 // Replace with your network credentials
-const char* ssid     = "NETWORKID";
-const char* password = "PASSWORD";
+const char* ssid     = "WiFi-2.4GHz";
+const char* password = "Reptile28large7732";
+const char* ntpServer = "pool.ntp.org";
+const long utcOffsetInSeconds = -4 * 60 * 60;
 
 
 // Set web server port number to 80
-// int ledPin = 2; // GPIO2 of ESP8266
 WiFiServer server(80);
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, ntpServer, utcOffsetInSeconds);
  
 void setup() {
   Serial.begin(115200);
   delay(10);
-   
+
   // Connect to WiFi network
   Serial.println();
   Serial.print("Connecting to ");
@@ -26,6 +31,9 @@ void setup() {
   }
   Serial.println("");
   Serial.println("WiFi connected");
+
+  timeClient.begin();
+
    
   // Start the server
   server.begin();
@@ -36,9 +44,14 @@ void setup() {
   Serial.print("http://");
   Serial.print(WiFi.localIP());
   Serial.println("/");    
+
+  timeClient.update();
+  // Serial.write(timeClient.getFormattedTime());
+  // delay(100);
 }
  
 void loop() {
+
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
