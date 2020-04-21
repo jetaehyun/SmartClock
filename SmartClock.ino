@@ -1,6 +1,5 @@
 #include <RGBmatrixPanel.h>
 #include "WeatherIcons.h"
-#include <string.h>
 
 #define CLK 11 
 #define OE   9
@@ -12,10 +11,28 @@
 
 int h, m, s;
 String hS, mS, sS;
+char timeBuf[9];   // HH:MM:SS
+int charCount = 0;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
 void setup() {
+  Serial.begin(115200);
+
+  while(1) {
+    if(Serial.available() > 0) {
+      if(Serial.read() == '&') break;
+    }
+  }
+
+  systemDelay(1000);
+  while(Serial.available() > 0 && charCount < 6) {
+    timeBuf[charCount++] = Serial.read();
+  }
+  timeBuf[charCount++] = '\0'; 
+  charCount = 0;
+  Serial.println(timeBuf);
+  systemDelay(100);
 
   matrix.begin();
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
@@ -31,8 +48,9 @@ void setup() {
 }
 
 void loop() {
-  delay(1000);
+  systemDelay(1000);
   printTime();
+
 }
 
 void printTime() {
@@ -75,3 +93,14 @@ void updateTime() {
   if(h < 10) hS = '0' + hS;
 }
 
+/*
+    function is used to pause system. Purpose is to avoid using Delay()
+    @param int wait, 1000 = 1 sec
+    @return nothing
+*/
+void systemDelay(int wait) {
+  long unsigned int timeStamp = millis();
+  while ((millis() - timeStamp) < wait) { // wait designated time
+    // do nothing
+  }
+}

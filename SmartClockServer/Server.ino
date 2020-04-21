@@ -27,27 +27,26 @@ void setup() {
    
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    // Serial.print(".");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  // Serial.println("");
+  // Serial.println("WiFi connected");
 
   timeClient.begin();
-
    
   // Start the server
   server.begin();
-  Serial.println("Server started");
+  // Serial.println("Server started");
  
   // Print the IP address
-  Serial.print("Use this URL to connect: ");
-  Serial.print("http://");
-  Serial.print(WiFi.localIP());
-  Serial.println("/");    
+  // Serial.print("Use this URL to connect: ");
+  // Serial.print("http://");
+  // Serial.print(WiFi.localIP());
+  // Serial.println("/");    
 
   timeClient.update();
-  // Serial.write(timeClient.getFormattedTime());
-  // delay(100);
+  sendTime(timeClient.getFormattedTime());
+  delay(1000);
 }
  
 void loop() {
@@ -59,7 +58,7 @@ void loop() {
   }
    
   // Wait until the client sends some data
-  Serial.println("New Client...");
+  // Serial.println("New Client...");
   
   while(!client.available()){
     delay(1);
@@ -97,8 +96,8 @@ void loop() {
 
  
   delay(1);
-  Serial.println("Client disconnected");
-  Serial.println("");
+  // Serial.println("Client disconnected");
+  // Serial.println("");
 
   if(req.indexOf("TIME") > 0) {
     Serial.println("TIME");
@@ -106,5 +105,14 @@ void loop() {
     Serial.println("WEATHER");
   } else if(req.indexOf("RESET") > 0) {
     Serial.println("RESET");
+  }
+}
+
+void sendTime(String time) {
+  Serial.write('&');
+  for(int i = 0; i < time.length(); i++) {
+    // Serial.println(time[i]);
+    if(time[i] == ':') continue;
+    Serial.write(time[i]);
   }
 }
