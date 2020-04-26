@@ -9,12 +9,19 @@
 #define C   A2
 #define D   A3
 
+enum state {
+  normal,
+  weather,
+  alarm
+};
+
 int h = 0, m = 0, s = 0;
 String hS, mS, sS;
 // char timeBuf[7];   // HH:MM:SS  ;  {H, H, M, M, S, S, \0}
 byte incoming;
 int tCount = 0;
 int tInt[6];
+state s = normal;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
@@ -45,8 +52,23 @@ void setup() {
 }
 
 void loop() {
-  systemDelay(1000);
-  printTime();
+  if(Serial.available() > 0) {
+    char SystemChange = Serial.read();
+    if(SystemChange == '0') s = weather;
+    else if(SystemChange == '1') s == alarm;
+  }
+  
+  switch(s) {
+    case normal:
+      systemDelay(1000);
+      printTime();
+      break;
+    case weather:
+      break;
+    case alarm:
+      break;
+  }
+
 
 }
 
@@ -73,15 +95,16 @@ void updateTime() {
   if(s >= 60) {
     s = 0;
     m++;
-    if(m >= 60) {
-      m = 0;
-      h++;
-      if(h >= 24) {
-        h = 0;
-        s++;
-      }
-    }
   }
+  if(m >= 60) {
+    m = 0;
+    h++;
+  }
+  if(h >= 24) {
+    h = 0;
+    s++;
+  }  
+    
   mS = String(m);
   hS = String(h);
   sS = String(s);

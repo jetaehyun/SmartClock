@@ -1,13 +1,27 @@
+#include <Arduino.h>
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
+#include <JsonListener.h>
+// #include <time.h>
+#include "OpenWeatherMapForecast.h"
 
 // Replace with your network credentials
-const char* ssid     = "WiFi-2.4GHz";
-const char* password = "Reptile28large7732";
+const char* ssid     = "";
+const char* password = "";
+
+// ntp, API key, etc...
 const char* ntpServer = "pool.ntp.org";
 const long utcOffsetInSeconds = -4 * 60 * 60;
+const String API = "";
+const String LOCATION_ID = "";
+const String LANGUAGE = "en";
+boolean isMETRIC = false;
+const uint8_t MAX_FORECASTS = 4;
+int weatherList[4];
 
+
+OpenWeatherMapForecast weatherClient;
 
 // Set web server port number to 80
 WiFiServer server(80);
@@ -90,7 +104,7 @@ void loop() {
 
   client.println("<FORM ACTION='/' method=get >"); 
   client.println("<input type=submit for='t'> Set the alarm");
-  client.println("<input type=time name='TIME' value='' id='t'><br><br>");
+  client.println("<input type=time name='ALARM' value='' id='t'><br><br>");
   client.println("</FORM>");
   client.println("</html>");
 
@@ -99,20 +113,68 @@ void loop() {
   // Serial.println("Client disconnected");
   // Serial.println("");
 
-  if(req.indexOf("TIME") > 0) {
-    Serial.println("TIME");
+  if(req.indexOf("ALARM") > 0) {
+    Serial.write("t");
   } else if( req.indexOf("WEATHER") > 0) {
-    Serial.println("WEATHER");
+    Serial.println("HERE\n");
+    int* idOfWeather = retrieveWeather();
+    for(int i = 0; i < 4; i++) {
+      Serial.write(*(idOfWeather + i));
+    }
   } else if(req.indexOf("RESET") > 0) {
-    Serial.println("RESET");
+    Serial.println("r");
   }
 }
 
 void sendTime(String time) {
   Serial.write('&');
   for(int i = 0; i < time.length(); i++) {
-    // Serial.println(time[i]);
     if(time[i] == ':') continue;
     Serial.print(time[i]);
   }
+}
+
+/**
+ * @brief function that returns a pointer to an array of weather IDs
+ * 
+ * @return int* pointer to an int array
+ */
+int* retrieveWeather() {
+  OpenWeatherMapForecastData data[MAX_FORECASTS];
+  weatherClient.setMetric(isMETRIC);
+  weatherClient.setLanguage(LANGUAGE);
+  uint8_t allowedHours[] = {0, 12};
+  weatherClient.setAllowedHours(allowedHours, 2);
+  uint8_t foundForecasts = weatherClient.updateForecastsById(data, API, LOCATION_ID, MAX_FORECASTS);
+
+  for(uint8_t i = 0; i < foundForecasts; i++) {
+    // Serial.printf("temp: %f\n", data[i].temp);
+    // Serial.printf("tempMin: %f\n", data[i].tempMin);
+    // Serial.printf("tempMax: %f\n", data[i].tempMax);
+    // Serial.printf("description: %s\n", data[i].description.c_str());
+    // Serial.printf("icon: %s\n", data[i].icon.c_str());
+    // Serial.printf("weatherId: %d\n", data[i].weatherId);
+    String w = data[i].main.c_str();
+    weatherList[i] = getWeatherID(w);
+  }
+  return weatherList;
+}
+
+/**
+ * @brief function to return a corresponding ID to the group id returned by OpenWeatherMap
+ * 
+ * @param wMain Main weather group ID returned by OpenWeatherMap
+ * @return int ID indicating what the condition is
+ */
+int getWeatherID(String wMain) {
+  if(wMain.equals("ThunderStorm")) return 0;
+  else if(wMain.equals("Drizzle")) return 1;
+  else if(wMain.equals("Rain")) return 2;
+  else if(wMain.equals("Snow")) return 3;
+  else if(wMain.equals("Mist")) return 4;
+  else if(wMain.equals("Clear")) return 5;
+  else if(wMain.equals("Tornado")) return 6;
+  else if(wMain.equals("Clouds")) return 7;
+  else if(wMain.equals("Fog")) return 8;
+  else return 9;
 }
