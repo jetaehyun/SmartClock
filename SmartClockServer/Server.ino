@@ -113,6 +113,6 @@ void sendTime(String time) {
   for(int i = 0; i < time.length(); i++) {
     // Serial.println(time[i]);
     if(time[i] == ':') continue;
-    Serial.write(time[i]);
+    Serial.print(time[i]);
   }
 }

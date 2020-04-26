@@ -9,10 +9,12 @@
 #define C   A2
 #define D   A3
 
-int h, m, s;
+int h = 0, m = 0, s = 0;
 String hS, mS, sS;
-char timeBuf[9];   // HH:MM:SS
-int charCount = 0;
+// char timeBuf[7];   // HH:MM:SS  ;  {H, H, M, M, S, S, \0}
+byte incoming;
+int tCount = 0;
+int tInt[6];
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
@@ -25,14 +27,11 @@ void setup() {
     }
   }
 
-  systemDelay(1000);
-  while(Serial.available() > 0 && charCount < 6) {
-    timeBuf[charCount++] = Serial.read();
-  }
-  timeBuf[charCount++] = '\0'; 
-  charCount = 0;
-  Serial.println(timeBuf);
   systemDelay(100);
+  while(Serial.available()) {
+    incoming = Serial.read();
+    tInt[tCount++] = incoming - '0';
+  }
 
   matrix.begin();
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
@@ -41,10 +40,8 @@ void setup() {
   matrix.drawRGBBitmap(15, 16, light_showers, 16, 16);
   matrix.drawRGBBitmap(32, 16, showers, 16, 16);
   matrix.drawRGBBitmap(48, 16, sunny_period, 16, 16);
+  convertTime();
 
-  h = 0;
-  m = 0;
-  s = 0;
 }
 
 void loop() {
@@ -91,6 +88,15 @@ void updateTime() {
   if(s < 10) sS = '0' + sS;
   if(m < 10) mS = '0' + mS;
   if(h < 10) hS = '0' + hS;
+}
+
+void convertTime() {  
+  s = (tInt[4] * 10 + tInt[5]) + 3;
+  m = tInt[2] * 10 + tInt[3];
+  h = tInt[0] * 10 + tInt[1];
+  Serial.println(s);
+  Serial.println(m);
+  Serial.println(h);
 }
 
 /*
