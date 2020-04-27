@@ -89,23 +89,27 @@ void loop() {
   client.println(""); 
   client.println("<!DOCTYPE HTML>");
   client.println("<html>");
+  client.println("<body>");
+  client.println("<body style='background-color:rgb(229, 255, 223)'>");
 
   // HTML code for GET requests
   client.println("<br><br>");
-  client.println("<HEAD>SmartClock</HEAD><br><br>");
+  client.println("<HEAD><center><font size=+2><b>SmartClock</b></font></center></HEAD><br><br>");
 
-  client.println("<FORM ACTION='/' method=get >"); 
-  client.println("<input type=submit name='WEATHER' value='Weather'><br><br>");
-  client.println("</FORM>");  
+  client.println("<FORM ACTION='/' method=get ><center>"); 
+  client.println("<input type=submit style='height:50px;width:100px;background-color:Orange' name='WEATHER' value='Weather'>");
+  client.println("</HEAD></FORM><br><br>");  
   
   client.println("<FORM ACTION='/' method=get >"); 
-  client.println("<input type=submit name='RESET' value='Reset'><br><br>");
+  client.println("<input type=submit style='height:50px;width:100px;background-color:Orange' name='RESET' value='Reset'><br><br>");
   client.println("</FORM>");
 
   client.println("<FORM ACTION='/' method=get >"); 
-  client.println("<input type=submit for='t'> Set the alarm");
-  client.println("<input type=time name='ALARM' value='' id='t'><br><br>");
+  client.println("<input type=submit name='ALARM' value='Alarm' style='height:50px;width:100px;background-color:Orange' for='t'>");
+  client.println("<input type=time id='t'><br><br>");
   client.println("</FORM>");
+
+  client.println("</body>");
   client.println("</html>");
 
  
