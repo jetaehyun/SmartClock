@@ -14,7 +14,7 @@ const char* password = "";
 const char* ntpServer = "pool.ntp.org";
 const long utcOffsetInSeconds = -4 * 60 * 60;
 const String API = "";
-const String LOCATION_ID = "";
+const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;
 const uint8_t MAX_FORECASTS = 4;
@@ -120,10 +120,11 @@ void loop() {
   if(req.indexOf("ALARM") > 0) {
     Serial.write("t");
   } else if( req.indexOf("WEATHER") > 0) {
-    Serial.println("HERE\n");
-    int* idOfWeather = retrieveWeather();
+    // int* idOfWeather = retrieveWeather();
+    Serial.write('w');
+    retrieveWeather();
     for(int i = 0; i < 4; i++) {
-      Serial.write(*(idOfWeather + i));
+      Serial.print(weatherList[i]);
     }
   } else if(req.indexOf("RESET") > 0) {
     Serial.println("r");
@@ -143,7 +144,7 @@ void sendTime(String time) {
  * 
  * @return int* pointer to an int array
  */
-int* retrieveWeather() {
+void retrieveWeather() {
   OpenWeatherMapForecastData data[MAX_FORECASTS];
   weatherClient.setMetric(isMETRIC);
   weatherClient.setLanguage(LANGUAGE);
@@ -161,7 +162,7 @@ int* retrieveWeather() {
     String w = data[i].main.c_str();
     weatherList[i] = getWeatherID(w);
   }
-  return weatherList;
+  // return weatherList;
 }
 
 /**
