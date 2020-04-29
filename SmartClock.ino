@@ -37,10 +37,13 @@ void setup() {
   }
 
   systemDelay(100);
-  while(Serial.available()) {
+  while(Serial.available() > 0) {
     incoming = Serial.read();
     tInt[tCount++] = incoming - '0';
+    if(tCount == 4) break;
   } 
+
+  while(Serial.available() > 0) Serial.read();
 
   matrix.begin();
   convertTime();
@@ -49,9 +52,9 @@ void setup() {
 
 void loop() {
   systemDelay(1000);
-  if(Serial.available() > 0) {
+  while(Serial.available() > 0) {
     char SystemChange = Serial.read();
-    delay(1);
+    delay(100);
     if(SystemChange == 'w') {
       st = weather;
       for(int i = 0; i < 4; i++) {
@@ -81,10 +84,13 @@ void printWeather() {
   matrix.setCursor(0, 0);
   matrix.fillRect(0, 0, 63, 14, matrix.Color333(0, 0, 0));
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
-  ptrToWeather(wID[0], 0, 16);
+  ptrToWeather(wID[0], 0, 0);
   ptrToWeather(wID[1], 15, 16);
-  ptrToWeather(wID[2], 32, 16);
+  ptrToWeather(wID[2], 32, 0);
   ptrToWeather(wID[3], 48, 16);
+  // for(int i = 0; i < 4; i++) {
+  //   Serial.println(wID[i]);
+  // }
   matrix.swapBuffers(true);
 
 }
@@ -107,6 +113,7 @@ void printWeather() {
  * @param y y position of the image
  */
 void ptrToWeather(char code, int x, int y) {
+  //TODO: change code comparisons since code is actually being read as int
   if(code == '0') matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
   else if(code == '1') matrix.drawRGBBitmap(x, y, light_rain, 16, 16);
   else if(code == '2') matrix.drawRGBBitmap(x, y, rain, 16, 16);

@@ -7,13 +7,13 @@
 #include "OpenWeatherMapForecast.h"
 
 // Replace with your network credentials
-const char* ssid     = "";
-const char* password = "";
+const char* ssid     = "WiFi-2.4GHz";
+const char* password = "Reptile28large7732";
 
 // ntp, API key, etc...
 const char* ntpServer = "pool.ntp.org";
 const long utcOffsetInSeconds = -4 * 60 * 60;
-const String API = "";
+const String API = "a697a406b377b5a3c6c25ac287a60bde";
 const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;
