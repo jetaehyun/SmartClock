@@ -3,7 +3,6 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <JsonListener.h>
-// #include <time.h>
 #include "OpenWeatherMapForecast.h"
 
 // Replace with your network credentials
@@ -33,9 +32,9 @@ void setup() {
   delay(10);
 
   // Connect to WiFi network
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
+  // Serial.println();
+  // Serial.print("Connecting to ");
+  // Serial.println(ssid);
    
   WiFi.begin(ssid, password);
    
@@ -105,8 +104,8 @@ void loop() {
   client.println("</FORM>");
 
   client.println("<FORM ACTION='/' method=get >"); 
-  client.println("<input type=submit name='ALARM' value='Alarm' style='height:50px;width:100px;background-color:Orange' for='t'>");
-  client.println("<input type=time id='t'><br><br>");
+  client.println("<input type=time id='t' name='t'><br><br>");
+  client.println("<input type=submit style='height:50px;width:100px;background-color:Orange'>");
   client.println("</FORM>");
 
   client.println("</body>");
@@ -117,10 +116,13 @@ void loop() {
   // Serial.println("Client disconnected");
   // Serial.println("");
 
-  if(req.indexOf("ALARM") > 0) {
-    Serial.write("t");
-  } else if( req.indexOf("WEATHER") > 0) {
-    // int* idOfWeather = retrieveWeather();
+  if(req.indexOf("t") > 0) {
+    Serial.print('t'); // notify clock that alarm information is coming in
+    Serial.print(req[8]); 
+    Serial.print(req[9]);
+    Serial.print(req[13]);
+    Serial.print(req[14]);
+  } else if(req.indexOf("WEATHER") > 0) {
     Serial.write('w');
     retrieveWeather();
     for(int i = 0; i < 4; i++) {
@@ -140,9 +142,8 @@ void sendTime(String time) {
 }
 
 /**
- * @brief function that returns a pointer to an array of weather IDs
+ * @brief function that gets weather data and stores unique ID for transmission
  * 
- * @return int* pointer to an int array
  */
 void retrieveWeather() {
   OpenWeatherMapForecastData data[MAX_FORECASTS];
@@ -162,7 +163,6 @@ void retrieveWeather() {
     String w = data[i].main.c_str();
     weatherList[i] = getWeatherID(w);
   }
-  // return weatherList;
 }
 
 /**

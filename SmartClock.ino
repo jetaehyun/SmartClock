@@ -11,7 +11,6 @@
 
 enum state {
   normal,
-  weather,
   alarm
 };
 
@@ -21,7 +20,7 @@ int h = 0, m = 0, s = 0;
 String hS, mS, sS;
 int tCount = 0;
 int tInt[6];
-char wID[4];
+int wID[4];
 
 state st = normal;
 
@@ -43,8 +42,6 @@ void setup() {
     if(tCount == 4) break;
   } 
 
-  while(Serial.available() > 0) Serial.read();
-
   matrix.begin();
   convertTime();
 
@@ -52,31 +49,26 @@ void setup() {
 
 void loop() {
   systemDelay(1000);
+  updateTime();
   while(Serial.available() > 0) {
     char SystemChange = Serial.read();
-    delay(100);
+    systemDelay(1);
     if(SystemChange == 'w') {
-      st = weather;
       for(int i = 0; i < 4; i++) {
-          wID[i] = Serial.read();
+          wID[i] = Serial.read() - '0';
       }
       printWeather();
+      st = alarm; // for now
     }
-    else if(SystemChange == '1') st == alarm;
   }
   
   switch(st) {
     case normal:
       printTime();
       break;
-    case weather:
-      // printWeather();
-      break;
     case alarm:
       break;
   }
-
-
 }
 
 void printWeather() {
@@ -84,15 +76,14 @@ void printWeather() {
   matrix.setCursor(0, 0);
   matrix.fillRect(0, 0, 63, 14, matrix.Color333(0, 0, 0));
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
-  ptrToWeather(wID[0], 0, 0);
-  ptrToWeather(wID[1], 15, 16);
-  ptrToWeather(wID[2], 32, 0);
-  ptrToWeather(wID[3], 48, 16);
+  drawWeather(wID[0], 0, 0);
+  drawWeather(wID[1], 15, 16);
+  drawWeather(wID[2], 32, 0);
+  drawWeather(wID[3], 48, 16);
   // for(int i = 0; i < 4; i++) {
   //   Serial.println(wID[i]);
   // }
   matrix.swapBuffers(true);
-
 }
 
 /**
@@ -112,21 +103,20 @@ void printWeather() {
  * @param x x position of the image
  * @param y y position of the image
  */
-void ptrToWeather(char code, int x, int y) {
+void drawWeather(int code, int x, int y) {
   //TODO: change code comparisons since code is actually being read as int
-  if(code == '0') matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
-  else if(code == '1') matrix.drawRGBBitmap(x, y, light_rain, 16, 16);
-  else if(code == '2') matrix.drawRGBBitmap(x, y, rain, 16, 16);
-  else if(code == '3') matrix.drawRGBBitmap(x, y, snow, 16, 16);
-  else if(code == '4') matrix.drawRGBBitmap(x, y, showers, 16, 16);
-  else if(code == '5') matrix.drawRGBBitmap(x, y, sunny_period, 16, 16);
-  else if(code == '6') matrix.drawRGBBitmap(x, y, storm, 16, 16);
-  else if(code == '7') matrix.drawRGBBitmap(x, y, cloudy, 16, 16);
-  else if(code == '8') matrix.drawRGBBitmap(x, y, foggy, 16, 16);
+  if(code == 0) matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
+  else if(code == 1) matrix.drawRGBBitmap(x, y, light_rain, 16, 16);
+  else if(code == 2) matrix.drawRGBBitmap(x, y, rain, 16, 16);
+  else if(code == 3) matrix.drawRGBBitmap(x, y, snow, 16, 16);
+  else if(code == 4) matrix.drawRGBBitmap(x, y, showers, 16, 16);
+  else if(code == 5) matrix.drawRGBBitmap(x, y, sunny_period, 16, 16);
+  else if(code == 6) matrix.drawRGBBitmap(x, y, storm, 16, 16);
+  else if(code == 7) matrix.drawRGBBitmap(x, y, cloudy, 16, 16);
+  else if(code == 8) matrix.drawRGBBitmap(x, y, foggy, 16, 16);
 }
 
 void printTime() {
-  updateTime();
   matrix.setCursor(0, 0);
   matrix.fillRect(0, 0, 63, 14, matrix.Color333(0, 0, 0));
   matrix.setCursor(0, 0);
@@ -143,7 +133,7 @@ void printTime() {
 }
 
 void convertTime() {  
-  s = (tInt[4] * 10 + tInt[5]) + 3; // 3 is the offset based on the delays from clock and server
+  s = (tInt[4] * 10 + tInt[5]) + 4; // 4 is the offset based on the delays
   m = tInt[2] * 10 + tInt[3];
   h = tInt[0] * 10 + tInt[1];
   // Serial.println(s);
@@ -153,17 +143,16 @@ void convertTime() {
 
 void updateTime() {
   s++;
-  if(s >= 60) {
+  if(s == 60) {
     s = 0;
     m++;
   }
-  if(m >= 60) {
+  if(m == 60) {
     m = 0;
     h++;
   }
-  if(h >= 24) {
+  if(h == 24) {
     h = 0;
-    s++;
   }  
     
   mS = String(m);
