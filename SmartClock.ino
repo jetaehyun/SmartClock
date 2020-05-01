@@ -9,6 +9,25 @@
 #define C   A2
 #define D   A3
 
+/**
+ * TODO: Things still needed
+ * - alarm information
+ *  - set values for alarm
+ *  - Ability to disable/enable alarm
+ *  - make the system go off at designated time
+ * - Make weather display better
+ *  - Icons indicating temperature???
+ *  - Display rgb value of the temp???
+ * - System needs to be able to return to clock display
+ * 
+ * 
+ * TODO: Things to worry about later
+ * - Clock is still inaccurate, by a few seconds
+ * - Clean up code
+ * - The clock has a lot of empty room initially, should I add in a news API?
+ * 
+ */
+
 enum state {
   normal,
   alarm
@@ -17,6 +36,8 @@ enum state {
 byte incoming;
 
 int h = 0, m = 0, s = 0;
+int alarmH = 0, alarmM = 0, alarmS = 0;
+bool isAlarm = false;
 String hS, mS, sS;
 int tCount = 0;
 int tInt[6];
@@ -35,7 +56,7 @@ void setup() {
     }
   }
 
-  systemDelay(100);
+  systemDelay(100); // wait for data to come in
   while(Serial.available() > 0) {
     incoming = Serial.read();
     tInt[tCount++] = incoming - '0';
@@ -50,17 +71,7 @@ void setup() {
 void loop() {
   systemDelay(1000);
   updateTime();
-  while(Serial.available() > 0) {
-    char SystemChange = Serial.read();
-    systemDelay(1);
-    if(SystemChange == 'w') {
-      for(int i = 0; i < 4; i++) {
-          wID[i] = Serial.read() - '0';
-      }
-      printWeather();
-      st = alarm; // for now
-    }
-  }
+  checkMessage();
   
   switch(st) {
     case normal:
@@ -69,6 +80,28 @@ void loop() {
     case alarm:
       break;
   }
+}
+
+void checkMessage() {
+  int data = 0;
+  if(Serial.available() > 0) { // only thing coming in after char check is int
+    char SystemChange = Serial.read();
+    systemDelay(1);
+    while(Serial.available() > 0) { 
+        wID[data++] = Serial.read() - '0';
+    }
+    if(SystemChange == 'w') {
+      printWeather();
+    } else if(SystemChange == 't') {
+      alarm = true;
+      setAlarm();
+    }
+    st = alarm;
+  }
+}
+
+void setAlarm() {
+
 }
 
 void printWeather() {
@@ -104,7 +137,6 @@ void printWeather() {
  * @param y y position of the image
  */
 void drawWeather(int code, int x, int y) {
-  //TODO: change code comparisons since code is actually being read as int
   if(code == 0) matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
   else if(code == 1) matrix.drawRGBBitmap(x, y, light_rain, 16, 16);
   else if(code == 2) matrix.drawRGBBitmap(x, y, rain, 16, 16);
