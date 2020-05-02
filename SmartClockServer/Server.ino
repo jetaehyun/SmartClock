@@ -6,17 +6,20 @@
 #include "OpenWeatherMapForecast.h"
 
 // Replace with your network credentials
-const char* ssid     = "WiFi-2.4GHz";
-const char* password = "Reptile28large7732";
+const char* ssid     = "";
+const char* password = "";
 
 // ntp, API key, etc...
 const char* ntpServer = "pool.ntp.org";
 const long utcOffsetInSeconds = -4 * 60 * 60;
-const String API = "a697a406b377b5a3c6c25ac287a60bde";
+const String API = "";
 const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;
+
+
 const uint8_t MAX_FORECASTS = 4;
+int tempData[4]; 
 int weatherList[4];
 
 
@@ -57,9 +60,9 @@ void setup() {
   // Serial.print(WiFi.localIP());
   // Serial.println("/");    
 
+  delay(1);
   timeClient.update();
   sendTime(timeClient.getFormattedTime());
-  delay(1000);
 }
  
 void loop() {
@@ -104,7 +107,7 @@ void loop() {
   client.println("</FORM>");
 
   client.println("<FORM ACTION='/' method=get >"); 
-  client.println("<input type=time id='t' name='t'><br><br>");
+  client.println("<input type=time id='ALARM' name='ALARM'><br><br>");
   client.println("<input type=submit style='height:50px;width:100px;background-color:Orange'>");
   client.println("</FORM>");
 
@@ -115,21 +118,24 @@ void loop() {
   delay(1);
   // Serial.println("Client disconnected");
   // Serial.println("");
-
-  if(req.indexOf("t") > 0) {
-    Serial.print('t'); // notify clock that alarm information is coming in
-    Serial.print(req[8]); 
-    Serial.print(req[9]);
-    Serial.print(req[13]);
-    Serial.print(req[14]);
+  if(req.indexOf("ALARM") > 0) {
+    Serial.write(0x3F); // DEC = 63, Chr = ?
+    Serial.write((int)req[12]); 
+    Serial.write((int)req[13]);
+    Serial.write((int)req[17]);
+    Serial.write((int)req[18]);
   } else if(req.indexOf("WEATHER") > 0) {
-    Serial.write('w');
+    Serial.write(0x3C); // DEC = 60, Chr = <
     retrieveWeather();
     for(int i = 0; i < 4; i++) {
-      Serial.print(weatherList[i]);
+      Serial.write(weatherList[i]); 
+    }
+    Serial.write(0x3A); // DEC = 58, Chr = :
+    for(int i = 0; i < 4; i++) {
+      Serial.write(tempData[i]); // send byte of tempInfo
     }
   } else if(req.indexOf("RESET") > 0) {
-    Serial.println("r");
+    Serial.write(0x2B); // DEC = 43, Chr = +
   }
 }
 
@@ -149,19 +155,18 @@ void retrieveWeather() {
   OpenWeatherMapForecastData data[MAX_FORECASTS];
   weatherClient.setMetric(isMETRIC);
   weatherClient.setLanguage(LANGUAGE);
-  uint8_t allowedHours[] = {0, 12};
+  uint8_t allowedHours[] = {12};
   weatherClient.setAllowedHours(allowedHours, 2);
   uint8_t foundForecasts = weatherClient.updateForecastsById(data, API, LOCATION_ID, MAX_FORECASTS);
 
   for(uint8_t i = 0; i < foundForecasts; i++) {
-    // Serial.printf("temp: %f\n", data[i].temp);
     // Serial.printf("tempMin: %f\n", data[i].tempMin);
     // Serial.printf("tempMax: %f\n", data[i].tempMax);
     // Serial.printf("description: %s\n", data[i].description.c_str());
     // Serial.printf("icon: %s\n", data[i].icon.c_str());
     // Serial.printf("weatherId: %d\n", data[i].weatherId);
-    String w = data[i].main.c_str();
-    weatherList[i] = getWeatherID(w);
+    tempData[i] = (int)data[i].temp;
+    weatherList[i] = getWeatherID(data[i].main.c_str());
   }
 }
 
