@@ -51,16 +51,15 @@ RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
 void setup() {
   Serial.begin(115200);
-  bool lookForTime = true;
 
-  while(lookForTime) {
+  while(1) {
     if(Serial.read() == '&') {
-      lookForTime = false;
       systemDelay(10);
       while(Serial.available() > 0) {
         incoming = Serial.read();
         timeBuf[tCount++] = incoming - '0';
       } 
+      break;
     }
   }
 
@@ -204,14 +203,14 @@ void updateTime() {
   if(s == 60) {
     s = 0;
     m++;
-  }
-  if(m == 60) {
-    m = 0;
-    h++;
-  }
-  if(h == 24) {
-    h = 0;
-  }  
+    if(m == 60) {
+      m = 0;
+      h++;
+      if(h == 24) {
+        h = 0;
+      } 
+    }
+  } 
     
   mS = String(m);
   hS = String(h);
