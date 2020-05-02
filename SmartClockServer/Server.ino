@@ -130,7 +130,7 @@ void loop() {
     for(int i = 0; i < 4; i++) {
       Serial.write(weatherList[i]); 
     }
-    Serial.write(0x3A); // DEC = 58, Chr = :
+    // Serial.write(0x3A); // DEC = 58, Chr = :
     for(int i = 0; i < 4; i++) {
       Serial.write(tempData[i]); // send byte of tempInfo
     }
