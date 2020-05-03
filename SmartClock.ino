@@ -1,4 +1,5 @@
 #include <RGBmatrixPanel.h>
+#include <avr/wdt.h>
 #include "WeatherIcons.h"
 
 #define CLK 11 
@@ -8,14 +9,11 @@
 #define B   A1
 #define C   A2
 #define D   A3
-#define resetSys 8
 
 /**
  * TODO: Things still needed
  * - alarm information
- *  - set values for alarm
  *  - Ability to disable/enable alarm
- *  - make the system go off at designated time
  * - Make weather display better
  *  - Display rgb value of the temp???
  * 
@@ -36,43 +34,42 @@ enum state {
 char incoming;
 
 int h = 0, m = 0, s = 0;
-int alarmH = 0, alarmM = 0, alarmS = 0;
-bool isAlarm = false;
+int alarmH = 0, alarmM = 0;
 bool isWeather = true;
 long unsigned int startTime = 0;
 String hS, mS, sS;
-int tCount = 0;
-int timeBuf[6];
 int wID[8];
+int alarmBuf[4];
 
 state st = normal;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
 void setup() {
+  MCUSR = 0;
   Serial.begin(115200);
+  int timeBuf[6];
+  int tCount = 0;
 
   while(1) {
     if(Serial.read() == '&') {
-      systemDelay(10);
+      systemDelay(100);
       while(Serial.available() > 0) {
         incoming = Serial.read();
-        timeBuf[tCount++] = incoming - '0';
+        timeBuf[tCount++] = incoming - '0';  // receiving the decimal value of the char number.. so 51 - 48 = 3
       } 
       break;
     }
   }
-
+  s = (timeBuf[4] * 10 + timeBuf[5]) + 4; // 4 is the offset based on the delays
+  m = timeBuf[2] * 10 + timeBuf[3];
+  h = timeBuf[0] * 10 + timeBuf[1];
   matrix.begin();
   matrix.setTextWrap(false);
-  convertTime();
-  pinMode(resetSys, OUTPUT);
-  digitalWrite(resetSys, HIGH);
-
 }
 
 void loop() {
-  systemDelay(1000);
+  delay(1000);
   updateTime();
   checkMessage();
   
@@ -84,15 +81,20 @@ void loop() {
       exitWeather();
       break;
     case alarm:
+      Serial.println("WAKE UP");
+      st = normal;
       break;
   }
+
+  matrix.swapBuffers(true);
+
 }
 
 void checkMessage() {
   if(Serial.available() > 0) { 
     int data = 0;
     byte recData = Serial.read();
-    systemDelay(20);
+    systemDelay(200);
     if(recData == 0x3C && isWeather) { // weather information
       while(Serial.available() > 0) {
         wID[data++] = (int)Serial.read();
@@ -102,11 +104,16 @@ void checkMessage() {
       startTime = millis();
       st = checkWeather;
     } else if(recData == 0x3F) { // alarm state
-      isAlarm = true;
+      while(Serial.available() > 0) {
+        alarmBuf[data++] = Serial.read() - '0';
+      }
+      // isAlarm = true;
       setAlarm();
     } else if(recData == 0x2B) { // reset system
-      digitalWrite(resetSys, LOW);
+      resetClock();
     }
+    flushBuffer();
+
   }
 }
 
@@ -121,7 +128,10 @@ void exitWeather() {
 }
 
 void setAlarm() {
-
+  alarmH = alarmBuf[0] * 10 + alarmBuf[1];
+  alarmM = alarmBuf[2] * 10 + alarmBuf[3];
+  Serial.println(alarmH);
+  Serial.println(alarmM);
 }
 
 void printWeather() {
@@ -140,8 +150,7 @@ void printWeather() {
   matrix.setCursor(34, 16);
   matrix.print(wID[6]);
   matrix.setCursor(51, 0);
-  matrix.print(wID[7]);      
-  matrix.swapBuffers(true);
+  matrix.print(wID[7]); 
 }
 
 /**
@@ -162,7 +171,7 @@ void printWeather() {
  * @param y y position of the image
  */
 void drawWeather(int code, int x, int y) {
-  if(code == 0)      matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
+  if     (code == 0) matrix.drawRGBBitmap(x, y, thunderstorms, 16, 16);
   else if(code == 1) matrix.drawRGBBitmap(x, y, light_rain, 16, 16);
   else if(code == 2) matrix.drawRGBBitmap(x, y, rain, 16, 16);
   else if(code == 3) matrix.drawRGBBitmap(x, y, snow, 16, 16);
@@ -186,16 +195,6 @@ void printTime() {
   matrix.setTextSize(1);
   matrix.setCursor(49, 7);
   matrix.print(sS);
-  matrix.swapBuffers(true);
-}
-
-void convertTime() {  
-  s = (timeBuf[4] * 10 + timeBuf[5]) + 4; // 4 is the offset based on the delays
-  m = timeBuf[2] * 10 + timeBuf[3];
-  h = timeBuf[0] * 10 + timeBuf[1];
-  // Serial.println(s);
-  // Serial.println(m);
-  // Serial.println(h);
 }
 
 void updateTime() {
@@ -211,13 +210,25 @@ void updateTime() {
       } 
     }
   } 
-    
+  if(alarmH == h && alarmM == m) st = alarm;  
   mS = String(m);
   hS = String(h);
   sS = String(s);
   if(s < 10) sS = '0' + sS;
   if(m < 10) mS = '0' + mS;
   if(h < 10) hS = '0' + hS;
+}
+
+void flushBuffer() {
+  while(Serial.available() > 0) Serial.read();
+}
+/**
+ * @brief enables WatchDogTimer and idles system to trigger it - causing reset
+ * 
+ */
+void resetClock() {
+  wdt_enable(WDTO_30MS);
+  while(1) {}
 }
 
 /*
