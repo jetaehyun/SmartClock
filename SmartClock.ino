@@ -9,6 +9,8 @@
 #define B   A1
 #define C   A2
 #define D   A3
+// #define F2(progmem_ptr) (const __FlashStringHelper *)progmem_ptr
+
 
 /**
  * TODO: Things still needed
@@ -33,7 +35,7 @@ enum state {
 
 char incoming;
 
-int h = 0, m = 0, s = 0;
+volatile int h = 0, m = 0, s = 0;
 int alarmH = 0, alarmM = 0;
 bool isWeather = true;
 long unsigned int startTime = 0;
@@ -45,9 +47,15 @@ state st = normal;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
 
+const char message[] = "HELLO WORLD I AM BOI";
+int16_t    textX         = matrix.width(),
+           textMin       = sizeof(message) * -12;
+
 void setup() {
   MCUSR = 0;
+
   Serial.begin(115200);
+  delay(10);
   int timeBuf[6];
   int tCount = 0;
 
@@ -64,15 +72,27 @@ void setup() {
   s = (timeBuf[4] * 10 + timeBuf[5]) + 4; // 4 is the offset based on the delays
   m = timeBuf[2] * 10 + timeBuf[3];
   h = timeBuf[0] * 10 + timeBuf[1];
+
   matrix.begin();
   matrix.setTextWrap(false);
+
+  // Enable timer5 interrupt; timer5 is 16bits
+  noInterrupts();    
+  TCCR5A = 0;
+  TCCR5B = 0;
+  TCNT5 = 0; //set counter value to 0
+  OCR5A = 15624; // set compare match register for 1Hz, output compare register
+  TCCR5B |= (1 << WGM12); // set timer to CTC mode
+  TCCR5B |= (1 << CS12) | (1 << CS10); // set to 1024 prescalar mode
+  TIMSK5 |= (1 << OCIE5A); // enable timer compare interrupt
+  interrupts();
 }
 
 void loop() {
-  delay(1000);
-  updateTime();
+  // delay(1000);
+  // updateTime();
   checkMessage();
-  
+  testDisplay();
   switch(st) {
     case normal:
       printTime();
@@ -87,6 +107,15 @@ void loop() {
   }
 
   matrix.swapBuffers(true);
+
+}
+
+void testDisplay() {
+  matrix.fillRect(matrix.width() - 1, matrix.height() /2 -1, 64, 32, matrix.Color333(0, 0, 0));
+  matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
+  matrix.setCursor(textX, 20);
+  matrix.print(message);
+  if((--textX) < textMin) textX = matrix.width();
 
 }
 
@@ -183,9 +212,16 @@ void drawWeather(int code, int x, int y) {
 }
 
 void printTime() {
+  mS = String(m);
+  hS = String(h);
+  sS = String(s);
+  if(s < 10) sS = '0' + sS;
+  if(m < 10) mS = '0' + mS;
+  if(h < 10) hS = '0' + hS;
   matrix.setCursor(0, 0);
   matrix.fillRect(0, 0, 64, 32, matrix.Color333(0, 0, 0));
   matrix.setCursor(0, 0);
+  matrix.setTextColor(matrix.Color333(255, 255, 255));
   matrix.setTextSize(2);
   matrix.print(hS);
   matrix.setCursor(19, 0);
@@ -197,15 +233,19 @@ void printTime() {
   matrix.print(sS);
 }
 
+/**
+ * @brief deprecated code
+ * 
+ */
 void updateTime() {
   s++;
-  if(s == 60) {
+  if(s >= 60) {
     s = 0;
     m++;
-    if(m == 60) {
+    if(m >= 60) {
       m = 0;
       h++;
-      if(h == 24) {
+      if(h >= 24) {
         h = 0;
       } 
     }
@@ -241,5 +281,21 @@ void systemDelay(int wait) {
   while ((millis() - timeStamp) < wait) { // wait designated time
     // do nothing
   }
+}
+
+ISR(TIMER5_COMPA_vect) {
+  s++;
+  if(s >= 60) {
+    s = 0;
+    m++;
+    if(m >= 60) {
+      m = 0;
+      h++;
+      if(h >= 24) {
+        h = 0;
+      } 
+    }
+  } 
+  // if(alarmH == h && alarmM == m) st = alarm; 
 }
 
