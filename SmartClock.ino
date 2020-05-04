@@ -46,10 +46,8 @@ int alarmBuf[4];
 state st = normal;
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
-
-const char message[] = "HELLO WORLD I AM BOI";
-int16_t    textX         = matrix.width(),
-           textMin       = sizeof(message) * -12;
+char message[] = "HELLO WORLD I AM BOI";
+int16_t textX = matrix.width(), textMin = sizeof(message) * -12;
 
 void setup() {
   MCUSR = 0;
@@ -89,13 +87,11 @@ void setup() {
 }
 
 void loop() {
-  // delay(1000);
-  // updateTime();
   checkMessage();
-  testDisplay();
   switch(st) {
     case normal:
       printTime();
+      displayNews();
       break;
     case checkWeather:
       exitWeather();
@@ -105,13 +101,10 @@ void loop() {
       st = normal;
       break;
   }
-
   matrix.swapBuffers(true);
-
 }
 
-void testDisplay() {
-  matrix.fillRect(matrix.width() - 1, matrix.height() /2 -1, 64, 32, matrix.Color333(0, 0, 0));
+void displayNews() {
   matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
   matrix.setCursor(textX, 20);
   matrix.print(message);
@@ -219,7 +212,7 @@ void printTime() {
   if(m < 10) mS = '0' + mS;
   if(h < 10) hS = '0' + hS;
   matrix.setCursor(0, 0);
-  matrix.fillRect(0, 0, 64, 32, matrix.Color333(0, 0, 0));
+  matrix.fillScreen(0);
   matrix.setCursor(0, 0);
   matrix.setTextColor(matrix.Color333(255, 255, 255));
   matrix.setTextSize(2);
@@ -296,6 +289,6 @@ ISR(TIMER5_COMPA_vect) {
       } 
     }
   } 
-  // if(alarmH == h && alarmM == m) st = alarm; 
+  if(alarmH == h && alarmM == m) st = alarm; 
 }
 
