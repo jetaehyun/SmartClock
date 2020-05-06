@@ -129,7 +129,6 @@ void checkMessage() {
     while(Serial.available() > 0) {
       wID[data++] = (int)Serial.read(); // coming in as byte
     }
-    // for(int i = 0; i < 8; i++) Serial.println(wID[i]);
     printWeather();
     startTime = millis();
     st = checkWeather;
