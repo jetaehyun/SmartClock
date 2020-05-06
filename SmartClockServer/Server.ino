@@ -62,7 +62,7 @@ void setup() {
 
   delay(1);
   timeClient.update();
-  sendTime(timeClient.getFormattedTime());
+  sendTime(timeClient.getFormattedTime(), timeClient.getEpochTime());
 }
  
 void loop() {
@@ -141,12 +141,21 @@ void loop() {
   }
 }
 
-void sendTime(String time) {
+/**
+ * @brief function to send data to Clock on time HHMMSS and the day of the week based on the EPOCH since Jan 1, 1970
+ * 
+ * @param time HH:MM:SS
+ * @param epochTime long indicating time since Jan 1, 1970
+ */
+void sendTime(String time, unsigned long epochTime) {
+  long day = epochTime / 86400L; // calc number of days since then
+  int weekDay = day % 7; // get the day of the week
   Serial.write('&');
   for(int i = 0; i < time.length(); i++) {
     if(time[i] == ':') continue;
     Serial.print(time[i]);
   }
+  Serial.print(weekDay);
 }
 
 /**

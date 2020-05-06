@@ -35,7 +35,8 @@ enum state {
 char incoming;
 
 volatile int h = 0, m = 0, s = 0;
-int alarmH = 0, alarmM = 0;
+int alarmH = -1, alarmM = -1;
+int dayOfWeekID = 0;
 long unsigned int startTime = 0;
 String hS, mS, sS;
 int wID[8];
@@ -48,7 +49,7 @@ char message[] = "HELLO WORLD I AM BOI";
 int16_t textX = matrix.width(), textMin = sizeof(message) * -12;
 
 void setup() {
-  MCUSR = 0;
+  MCUSR = 0; // set for WatchdogTimer
 
   // Enable timer5 interrupt; timer5 is 16bits
   noInterrupts();    
@@ -63,7 +64,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(10);
-  int timeBuf[6];
+  int timeBuf[7];
   int tCount = 0;
 
   while(1) {
@@ -76,9 +77,10 @@ void setup() {
       break;
     }
   }
-  s = (timeBuf[4] * 10 + timeBuf[5]) + 4; // 4 is the offset based on the delays
+  s = (timeBuf[4] * 10 + timeBuf[5]);
   m = timeBuf[2] * 10 + timeBuf[3];
   h = timeBuf[0] * 10 + timeBuf[1];
+  dayOfWeekID = timeBuf[6];
 
   matrix.begin();
   matrix.setTextWrap(false);
@@ -86,7 +88,9 @@ void setup() {
 
 void loop() {
   if(Serial.available() > 0) {
-    systemDelay(600);
+    // Baud rate is very high, so without a long delay, 
+    // the system ignores an incoming msg because it has not arrived yet
+    systemDelay(800); 
     checkMessage();
   }
   switch(st) {
@@ -113,13 +117,17 @@ void displayNews() {
 
 }
 
+/**
+ * @brief function reads data and stores them into their appropriate buffers
+ *   **Could be updated to include a single buffer**
+ */
 void checkMessage() {
   int data = 0;
   byte recData = Serial.read();
   // Serial.println(recData);
   if(recData == 0x3C) { // weather information
     while(Serial.available() > 0) {
-      wID[data++] = (int)Serial.read();
+      wID[data++] = (int)Serial.read(); // coming in as byte
     }
     // for(int i = 0; i < 8; i++) Serial.println(wID[i]);
     printWeather();
@@ -133,32 +141,36 @@ void checkMessage() {
   } else if(recData == 0x2B) { // reset system
     resetClock();
   }
-    // flushBuffer();
+  flushBuffer();
 }
 
-void exitWeather() {
-  long unsigned int currentTime = millis();
-  if(currentTime - startTime > 8000) {
-    st = normal;
-  }
-  
-}
-
-void setAlarm() {
-  alarmH = alarmBuf[0] * 10 + alarmBuf[1];
-  alarmM = alarmBuf[2] * 10 + alarmBuf[3];
-  // Serial.println(alarmH);
-  // Serial.println(alarmM);
-}
-
+/**
+ * @brief print out weather information
+ * 
+ */
 void printWeather() {
   matrix.setCursor(0, 0);
   matrix.fillScreen(0);
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
+  matrix.setTextSize(1);
+
+  // PRINT WEATHER ICONS
   drawWeather(wID[0], 0, 0);
   drawWeather(wID[1], 15, 16);
   drawWeather(wID[2], 32, 0);
   drawWeather(wID[3], 48, 16);
+
+  // PRINT DAY OF WEEK 
+  matrix.setCursor(2, 24);
+  matrix.print(nameOfDay(dayOfWeekID % 7));
+  matrix.setCursor(19, 8);
+  matrix.print(nameOfDay((dayOfWeekID + 1) % 7));
+  matrix.setCursor(34, 24);
+  matrix.print(nameOfDay((dayOfWeekID + 2) % 7)); 
+  matrix.setCursor(51, 8);
+  matrix.print(nameOfDay((dayOfWeekID + 3) % 7)); 
+
+  // PRINT TEMP IN F
   matrix.setCursor(2, 16);
   matrix.print(wID[4]);
   matrix.setCursor(19, 0);
@@ -167,6 +179,7 @@ void printWeather() {
   matrix.print(wID[6]);
   matrix.setCursor(51, 0);
   matrix.print(wID[7]); 
+ 
 }
 
 /**
@@ -198,6 +211,10 @@ void drawWeather(int code, int x, int y) {
   else if(code == 8) matrix.drawRGBBitmap(x, y, foggy, 16, 16);
 }
 
+/**
+ * @brief helper function to print out the time on the matrix
+ * 
+ */
 void printTime() {
   mS = String(m);
   hS = String(h);
@@ -218,6 +235,44 @@ void printTime() {
   matrix.setTextSize(1);
   matrix.setCursor(49, 7);
   matrix.print(sS);
+}
+
+/**
+ * @brief function to get the name of the day
+ * 
+ * @param day days since Jan 1, 1970. Day is obtained from EPOCH since then, obtained from ESP module
+ * @return String returns the string of the day
+ */
+String nameOfDay(int day) {
+  if(day == 0) return "TH";
+  else if(day == 1) return "FR";
+  else if(day == 2) return "SA";
+  else if(day == 3) return "SU";
+  else if(day == 4) return "MO";
+  else if(day == 5) return "TU";
+  else if(day == 6) return "WE";
+}
+
+/**
+ * @brief function to exit weather state after 8 secs since state change elapsed
+ * 
+ */
+void exitWeather() {
+  long unsigned int currentTime = millis();
+  if(currentTime - startTime > 8000) {
+    st = normal;
+  }
+}
+
+/**
+ * @brief helper function that sets the global variables based on the data from alarmBuf
+ * 
+ */
+void setAlarm() {
+  alarmH = alarmBuf[0] * 10 + alarmBuf[1];
+  alarmM = alarmBuf[2] * 10 + alarmBuf[3];
+  // Serial.println(alarmH);
+  // Serial.println(alarmM);
 }
 
 /**
@@ -246,9 +301,14 @@ void updateTime() {
   if(h < 10) hS = '0' + hS;
 }
 
+/**
+ * @brief function to empty out the data buffer
+ * 
+ */
 void flushBuffer() {
   while(Serial.available() > 0) Serial.read();
 }
+
 /**
  * @brief enables WatchDogTimer and idles system to trigger it - causing reset
  * 
@@ -270,6 +330,10 @@ void systemDelay(int wait) {
   }
 }
 
+/**
+ * @brief Construct a new ISR object, increments s, m, h and changes st to alarm if triggered
+ * 
+ */
 ISR(TIMER5_COMPA_vect) {
   s++;
   if(s >= 60) {
