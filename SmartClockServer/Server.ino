@@ -134,6 +134,8 @@ void loop() {
     for(int i = 0; i < 4; i++) {
       Serial.write(tempData[i]); // send byte of tempInfo
     }
+    // for(int i = 0; i < 4; i++) Serial.printf("weatherID: %d, tempData: %d\n", weatherList[i], tempData[i]);
+    
   } else if(req.indexOf("RESET") > 0) {
     Serial.write(0x2B); // DEC = 43, Chr = +
   }
@@ -158,7 +160,6 @@ void retrieveWeather() {
   uint8_t allowedHours[] = {12};
   weatherClient.setAllowedHours(allowedHours, 2);
   uint8_t foundForecasts = weatherClient.updateForecastsById(data, API, LOCATION_ID, MAX_FORECASTS);
-
   for(uint8_t i = 0; i < foundForecasts; i++) {
     // Serial.printf("tempMin: %f\n", data[i].tempMin);
     // Serial.printf("tempMax: %f\n", data[i].tempMax);
@@ -168,6 +169,7 @@ void retrieveWeather() {
     tempData[i] = (int)data[i].temp;
     weatherList[i] = getWeatherID(data[i].main.c_str());
   }
+
 }
 
 /**

@@ -9,7 +9,6 @@
 #define B   A1
 #define C   A2
 #define D   A3
-// #define F2(progmem_ptr) (const __FlashStringHelper *)progmem_ptr
 
 
 /**
@@ -37,7 +36,6 @@ char incoming;
 
 volatile int h = 0, m = 0, s = 0;
 int alarmH = 0, alarmM = 0;
-bool isWeather = true;
 long unsigned int startTime = 0;
 String hS, mS, sS;
 int wID[8];
@@ -51,6 +49,17 @@ int16_t textX = matrix.width(), textMin = sizeof(message) * -12;
 
 void setup() {
   MCUSR = 0;
+
+  // Enable timer5 interrupt; timer5 is 16bits
+  noInterrupts();    
+  TCCR5A = 0;
+  TCCR5B = 0;
+  TCNT5 = 0; //set counter value to 0
+  OCR5A = 15624; // set compare match register for 1Hz, output compare register
+  TCCR5B |= (1 << WGM12); // set timer to CTC mode
+  TCCR5B |= (1 << CS12) | (1 << CS10); // set to 1024 prescalar mode
+  TIMSK5 |= (1 << OCIE5A); // enable timer compare interrupt
+  interrupts();
 
   Serial.begin(115200);
   delay(10);
@@ -73,21 +82,13 @@ void setup() {
 
   matrix.begin();
   matrix.setTextWrap(false);
-
-  // Enable timer5 interrupt; timer5 is 16bits
-  noInterrupts();    
-  TCCR5A = 0;
-  TCCR5B = 0;
-  TCNT5 = 0; //set counter value to 0
-  OCR5A = 15624; // set compare match register for 1Hz, output compare register
-  TCCR5B |= (1 << WGM12); // set timer to CTC mode
-  TCCR5B |= (1 << CS12) | (1 << CS10); // set to 1024 prescalar mode
-  TIMSK5 |= (1 << OCIE5A); // enable timer compare interrupt
-  interrupts();
 }
 
 void loop() {
-  checkMessage();
+  if(Serial.available() > 0) {
+    systemDelay(600);
+    checkMessage();
+  }
   switch(st) {
     case normal:
       printTime();
@@ -113,53 +114,46 @@ void displayNews() {
 }
 
 void checkMessage() {
-  if(Serial.available() > 0) { 
-    int data = 0;
-    byte recData = Serial.read();
-    systemDelay(200);
-    if(recData == 0x3C && isWeather) { // weather information
-      while(Serial.available() > 0) {
-        wID[data++] = (int)Serial.read();
-      }
-      isWeather = false;
-      printWeather();
-      startTime = millis();
-      st = checkWeather;
-    } else if(recData == 0x3F) { // alarm state
-      while(Serial.available() > 0) {
-        alarmBuf[data++] = Serial.read() - '0';
-      }
-      // isAlarm = true;
-      setAlarm();
-    } else if(recData == 0x2B) { // reset system
-      resetClock();
+  int data = 0;
+  byte recData = Serial.read();
+  // Serial.println(recData);
+  if(recData == 0x3C) { // weather information
+    while(Serial.available() > 0) {
+      wID[data++] = (int)Serial.read();
     }
-    flushBuffer();
-
+    // for(int i = 0; i < 8; i++) Serial.println(wID[i]);
+    printWeather();
+    startTime = millis();
+    st = checkWeather;
+  } else if(recData == 0x3F) { // alarm state
+    while(Serial.available() > 0) {
+      alarmBuf[data++] = Serial.read() - '0';
+    }
+    setAlarm();
+  } else if(recData == 0x2B) { // reset system
+    resetClock();
   }
+    // flushBuffer();
 }
 
 void exitWeather() {
-  if(!isWeather) {
-    long unsigned int currentTime = millis();
-    if(currentTime - startTime > 8000) {
-      isWeather = true;
-      st = normal;
-    }
+  long unsigned int currentTime = millis();
+  if(currentTime - startTime > 8000) {
+    st = normal;
   }
+  
 }
 
 void setAlarm() {
   alarmH = alarmBuf[0] * 10 + alarmBuf[1];
   alarmM = alarmBuf[2] * 10 + alarmBuf[3];
-  Serial.println(alarmH);
-  Serial.println(alarmM);
+  // Serial.println(alarmH);
+  // Serial.println(alarmM);
 }
 
 void printWeather() {
-  matrix.setTextWrap(false);
   matrix.setCursor(0, 0);
-  matrix.fillRect(0, 0, 64, 32, matrix.Color333(0, 0, 0));
+  matrix.fillScreen(0);
   matrix.setTextColor(matrix.ColorHSV(0, 1, 150, true));
   drawWeather(wID[0], 0, 0);
   drawWeather(wID[1], 15, 16);
@@ -289,6 +283,7 @@ ISR(TIMER5_COMPA_vect) {
       } 
     }
   } 
+
   if(alarmH == h && alarmM == m) st = alarm; 
 }
 
