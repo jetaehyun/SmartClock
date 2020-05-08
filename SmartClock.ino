@@ -20,7 +20,6 @@
  * 
  * 
  * TODO: Things to worry about later
- * - Clock is still inaccurate, by a few seconds
  * - Clean up code
  * - The clock has a lot of empty room initially, should I add in a news API?
  * 
@@ -31,8 +30,7 @@ enum state {
   checkWeather,
   alarm
 };
-
-char incoming;
+state st = normal;
 
 volatile int h = 0, m = 0, s = 0;
 int alarmH = -1, alarmM = -1;
@@ -42,17 +40,15 @@ String hS, mS, sS;
 int wID[8];
 int alarmBuf[4];
 
-state st = normal;
-
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
-char message[] = "HELLO WORLD I AM BOI";
-int16_t textX = matrix.width(), textMin = sizeof(message) * -12;
+char messageBuf[64];
+int16_t textX = matrix.width(), textMin = 0;
 
 void setup() {
   MCUSR = 0; // set for WatchdogTimer
 
   // Enable timer5 interrupt; timer5 is 16bits
-  noInterrupts();    
+  cli();
   TCCR5A = 0;
   TCCR5B = 0;
   TCNT5 = 0; //set counter value to 0
@@ -60,7 +56,7 @@ void setup() {
   TCCR5B |= (1 << WGM12); // set timer to CTC mode
   TCCR5B |= (1 << CS12) | (1 << CS10); // set to 1024 prescalar mode
   TIMSK5 |= (1 << OCIE5A); // enable timer compare interrupt
-  interrupts();
+  sei();
 
   Serial.begin(115200);
   delay(10);
@@ -71,12 +67,16 @@ void setup() {
     if(Serial.read() == '&') {
       systemDelay(100);
       while(Serial.available() > 0) {
-        incoming = Serial.read();
-        timeBuf[tCount++] = incoming - '0';  // receiving the decimal value of the char number.. so 51 - 48 = 3
-      } 
-      break;
+        timeBuf[tCount++] = Serial.read() - '0';  // receiving the decimal value of the char number.. so 51 - 48 = 3
+      }
+      break; 
     }
   }
+
+  while(!Serial.available()) {}
+  systemDelay(800);
+  checkMessage();
+
   s = (timeBuf[4] * 10 + timeBuf[5]);
   m = timeBuf[2] * 10 + timeBuf[3];
   h = timeBuf[0] * 10 + timeBuf[1];
@@ -90,7 +90,7 @@ void loop() {
   if(Serial.available() > 0) {
     // Baud rate is very high, so without a long delay, 
     // the system ignores an incoming msg because it has not arrived yet
-    systemDelay(800); 
+    systemDelay(800);
     checkMessage();
   }
   switch(st) {
@@ -110,11 +110,10 @@ void loop() {
 }
 
 void displayNews() {
-  matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
-  matrix.setCursor(textX, 20);
-  matrix.print(message);
   if((--textX) < textMin) textX = matrix.width();
-
+  matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
+  matrix.setCursor(textX, 25);
+  matrix.print(message);
 }
 
 /**
@@ -139,6 +138,13 @@ void checkMessage() {
     setAlarm();
   } else if(recData == 0x2B) { // reset system
     resetClock();
+  } else if(recData == 0x5E) {
+    while(Serial.available() > 0 && data < 64) {
+      char m = (char)Serial.read();
+      if(m == '#' && data != 0) messageBuf[data++] = ' ';
+      messageBuf[data++] = m;
+    }
+    textMin = -1 * (sizeof(messageBuf) * 5);
   }
   flushBuffer();
 }

@@ -3,32 +3,41 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <JsonListener.h>
-#include "OpenWeatherMapForecast.h"
+#include <TwitterWebAPI.h>
+#include <OpenWeatherMapForecast.h>
+
+#define twiTimeout 2000
 
 // Replace with your network credentials
 const char* ssid     = "";
 const char* password = "";
 
-// ntp, API key, etc...
+// NTP 
 const char* ntpServer = "pool.ntp.org";
 const long utcOffsetInSeconds = -4 * 60 * 60;
-const String API = "";
+
+// Twitter Cred
+const char* twi_key = "";
+const char* twi_key_sec = "";
+const char* twi_token = "3666714796-";
+const char* twi_token_sec = "";
+char trendingTweet[64];
+
+// OpenWeatherMap Cred/Data
+const String API = "a697a406b377b5a3c6c25ac287a60bde";
 const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;
-
-
 const uint8_t MAX_FORECASTS = 4;
 int tempData[4]; 
 int weatherList[4];
-
-
 OpenWeatherMapForecast weatherClient;
 
 // Set web server port number to 80
 WiFiServer server(80);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, utcOffsetInSeconds);
+TwitterClient tc(timeClient, twi_key, twi_key_sec, twi_token, twi_token_sec);
  
 void setup() {
   Serial.begin(115200);
@@ -62,11 +71,13 @@ void setup() {
 
   delay(1);
   timeClient.update();
+  tc.startNTP();
   sendTime(timeClient.getFormattedTime(), timeClient.getEpochTime());
+  delay(500);
+  sendTrendingTweets();
 }
- 
-void loop() {
 
+void loop() {
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
@@ -170,11 +181,6 @@ void retrieveWeather() {
   weatherClient.setAllowedHours(allowedHours, 2);
   uint8_t foundForecasts = weatherClient.updateForecastsById(data, API, LOCATION_ID, MAX_FORECASTS);
   for(uint8_t i = 0; i < foundForecasts; i++) {
-    // Serial.printf("tempMin: %f\n", data[i].tempMin);
-    // Serial.printf("tempMax: %f\n", data[i].tempMax);
-    // Serial.printf("description: %s\n", data[i].description.c_str());
-    // Serial.printf("icon: %s\n", data[i].icon.c_str());
-    // Serial.printf("weatherId: %d\n", data[i].weatherId);
     tempData[i] = (int)data[i].temp;
     weatherList[i] = getWeatherID(data[i].main.c_str());
   }
@@ -182,20 +188,44 @@ void retrieveWeather() {
 }
 
 /**
+ * @brief function to transmit the top 3 trending # on twitter
+ * 
+ */
+void sendTrendingTweets() {
+  String trend = tc.searchTwitter(); // API function call was modifed to return trending data
+  // Serial.println(trend);
+  int first = trend.indexOf('#');
+  int firstEnd = trend.indexOf(',', first + 1) - 1;
+
+  int sec = trend.indexOf('#', first + 1);
+  int secEnd = trend.indexOf(',', sec + 1) - 1;
+
+  int third = trend.indexOf('#', sec + 1);
+  int thirdEnd = trend.indexOf(',', third + 1) - 1;
+  String trending = trend.substring(first, firstEnd) + trend.substring(sec, secEnd) + trend.substring(third, thirdEnd);
+  trending.toCharArray(trendingTweet, trending.length() + 1);
+  Serial.write(0x5E); // DEC = 43, Chr = ^
+  for(int i = 0; i < trending.length(); i++) {
+    delay(1); // needs time to process data, without this, the data will not be transmitted well to the clock
+    Serial.write(trendingTweet[i]);
+  }
+}
+
+/**
  * @brief function to return a corresponding ID to the group id returned by OpenWeatherMap
  * 
- * @param wMain Main weather group ID returned by OpenWeatherMap
+ * @param wID Main weather group ID returned by OpenWeatherMap
  * @return int ID indicating what the condition is
  */
-int getWeatherID(String wMain) {
-  if(wMain.equals("ThunderStorm")) return 0;
-  else if(wMain.equals("Drizzle")) return 1;
-  else if(wMain.equals("Rain")) return 2;
-  else if(wMain.equals("Snow")) return 3;
-  else if(wMain.equals("Mist")) return 4;
-  else if(wMain.equals("Clear")) return 5;
-  else if(wMain.equals("Tornado")) return 6;
-  else if(wMain.equals("Clouds")) return 7;
-  else if(wMain.equals("Fog")) return 8;
+int getWeatherID(String wID) {
+  if     (wID.equals("ThunderStorm")) return 0;
+  else if(wID.equals("Drizzle")) return 1;
+  else if(wID.equals("Rain")) return 2;
+  else if(wID.equals("Snow")) return 3;
+  else if(wID.equals("Mist")) return 4;
+  else if(wID.equals("Clear")) return 5;
+  else if(wID.equals("Tornado")) return 6;
+  else if(wID.equals("Clouds")) return 7;
+  else if(wID.equals("Fog")) return 8;
   else return 9;
 }
