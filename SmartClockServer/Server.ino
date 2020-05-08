@@ -19,7 +19,7 @@ const long utcOffsetInSeconds = -4 * 60 * 60;
 // Twitter Cred
 const char* twi_key = "";
 const char* twi_key_sec = "";
-const char* twi_token = "3666714796-";
+const char* twi_token = "";
 const char* twi_token_sec = "";
 char trendingTweet[64];
 
@@ -194,15 +194,24 @@ void retrieveWeather() {
 void sendTrendingTweets() {
   String trend = tc.searchTwitter(); // API function call was modifed to return trending data
   // Serial.println(trend);
-  int first = trend.indexOf('#');
-  int firstEnd = trend.indexOf(',', first + 1) - 1;
 
-  int sec = trend.indexOf('#', first + 1);
-  int secEnd = trend.indexOf(',', sec + 1) - 1;
+  String trending = "";
+  int end = 0;
+  for(int i = 0; i < 3; i++) {
+    int hashTag = trend.indexOf('#', end + i);
+    int hashTagEnd = trend.indexOf(',', hashTag + 1) - 1;
+    end = hashTagEnd;
+    trending += trend.indexOf(hashTag, hashTagEnd);
+  }
+  // int first = trend.indexOf('#');
+  // int firstEnd = trend.indexOf(',', first + 1) - 1;
 
-  int third = trend.indexOf('#', sec + 1);
-  int thirdEnd = trend.indexOf(',', third + 1) - 1;
-  String trending = trend.substring(first, firstEnd) + trend.substring(sec, secEnd) + trend.substring(third, thirdEnd);
+  // int sec = trend.indexOf('#', first + 1);
+  // int secEnd = trend.indexOf(',', sec + 1) - 1;
+
+  // int third = trend.indexOf('#', sec + 1);
+  // int thirdEnd = trend.indexOf(',', third + 1) - 1;
+  // String trending = trend.substring(first, firstEnd) + trend.substring(sec, secEnd) + trend.substring(third, thirdEnd);
   trending.toCharArray(trendingTweet, trending.length() + 1);
   Serial.write(0x5E); // DEC = 43, Chr = ^
   for(int i = 0; i < trending.length(); i++) {

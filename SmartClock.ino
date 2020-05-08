@@ -21,7 +21,6 @@
  * 
  * TODO: Things to worry about later
  * - Clean up code
- * - The clock has a lot of empty room initially, should I add in a news API?
  * 
  */
 
