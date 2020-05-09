@@ -13,8 +13,6 @@
 
 /**
  * TODO: Things still needed
- * - alarm information
- *  - Ability to disable/enable alarm
  * - Make weather display better
  *  - Display rgb value of the temp???
  * 
@@ -32,11 +30,12 @@ enum state {
 state st = normal;
 
 volatile int h = 0, m = 0, s = 0;
+volatile bool getTweet = false;
 int alarmH = -1, alarmM = -1;
 int dayOfWeekID = 0;
 long unsigned int startTime = 0;
 String hS, mS, sS;
-int wID[8];
+int weatherBuf[8];
 int alarmBuf[4];
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
@@ -72,10 +71,6 @@ void setup() {
     }
   }
 
-  while(!Serial.available()) {}
-  systemDelay(800);
-  checkMessage();
-
   s = (timeBuf[4] * 10 + timeBuf[5]);
   m = timeBuf[2] * 10 + timeBuf[3];
   h = timeBuf[0] * 10 + timeBuf[1];
@@ -86,6 +81,11 @@ void setup() {
 }
 
 void loop() {
+  if(getTweet) { // at every hour, this condition will run.
+    Serial.write(0x7E);
+    getTweet = false;
+  }
+
   if(Serial.available() > 0) {
     // Baud rate is very high, so without a long delay, 
     // the system ignores an incoming msg because it has not arrived yet
@@ -112,7 +112,7 @@ void displayNews() {
   if((--textX) < textMin) textX = matrix.width();
   matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
   matrix.setCursor(textX, 25);
-  matrix.print(message);
+  matrix.print(messageBuf);
 }
 
 /**
@@ -125,7 +125,7 @@ void checkMessage() {
   // Serial.println(recData);
   if(recData == 0x3C) { // weather information
     while(Serial.available() > 0) {
-      wID[data++] = (int)Serial.read(); // coming in as byte
+      weatherBuf[data++] = (int)Serial.read(); // coming in as byte
     }
     printWeather();
     startTime = millis();
@@ -159,10 +159,10 @@ void printWeather() {
   matrix.setTextSize(1);
 
   // PRINT WEATHER ICONS
-  drawWeather(wID[0], 0, 0);
-  drawWeather(wID[1], 15, 16);
-  drawWeather(wID[2], 32, 0);
-  drawWeather(wID[3], 48, 16);
+  drawWeather(weatherBuf[0], 0, 0);
+  drawWeather(weatherBuf[1], 15, 16);
+  drawWeather(weatherBuf[2], 32, 0);
+  drawWeather(weatherBuf[3], 48, 16);
 
   // PRINT DAY OF WEEK 
   matrix.setCursor(2, 24);
@@ -176,13 +176,13 @@ void printWeather() {
 
   // PRINT TEMP IN F
   matrix.setCursor(2, 16);
-  matrix.print(wID[4]);
+  matrix.print(weatherBuf[4]);
   matrix.setCursor(19, 0);
-  matrix.print(wID[5]);
+  matrix.print(weatherBuf[5]);
   matrix.setCursor(34, 16);
-  matrix.print(wID[6]);
+  matrix.print(weatherBuf[6]);
   matrix.setCursor(51, 0);
-  matrix.print(wID[7]); 
+  matrix.print(weatherBuf[7]); 
  
 }
 
@@ -346,12 +346,12 @@ ISR(TIMER5_COMPA_vect) {
     if(m >= 60) {
       m = 0;
       h++;
+      getTweet = true;
       if(h >= 24) {
         h = 0;
       } 
     }
   } 
-
-  if(alarmH == h && alarmM == m) st = alarm; 
+  if(alarmH == h && alarmM == m && s == 0) st = alarm;
 }
 
