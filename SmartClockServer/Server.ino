@@ -4,6 +4,7 @@
 #include <WiFiUdp.h>
 #include <JsonListener.h>
 #include <TwitterWebAPI.h>
+#include <TimeLib.h>
 #include <OpenWeatherMapForecast.h>
 
 #define twiTimeout 2000
@@ -19,7 +20,7 @@ const long utcOffsetInSeconds = -4 * 60 * 60;
 // Twitter Cred
 const char* twi_key = "";
 const char* twi_key_sec = "";
-const char* twi_token = "3666714796-";
+const char* twi_token = "";
 const char* twi_token_sec = "";
 char trendingTweet[64];
 bool getTweet = true;
@@ -69,9 +70,8 @@ void setup() {
   // Serial.print("http://");
   // Serial.print(WiFi.localIP());
   // Serial.println("/");    
-
   timeClient.update();
-  sendTime(timeClient.getFormattedTime(), timeClient.getEpochTime());
+  sendTime(timeClient.getFormattedTime(), timeClient.getDay(), timeClient.getEpochTime());
 
 }
 
@@ -150,8 +150,6 @@ void loop() {
       delay(1);
       Serial.write(weatherBuf[i]); 
     }
-    // for(int i = 0; i < 4; i++) Serial.printf("weatherID: %d, tempData: %d\n", weatherList[i], tempData[i]);
-    
   } else if(req.indexOf("RESET") > 0) {
     Serial.write(0x2B); // DEC = 43, Chr = +
   }
@@ -163,15 +161,17 @@ void loop() {
  * @param time HH:MM:SS
  * @param epochTime long indicating time since Jan 1, 1970
  */
-void sendTime(String time, unsigned long epochTime) {
-  long day = epochTime / 86400L; // calc number of days since then
-  int weekDay = day % 7; // get the day of the week
+void sendTime(String time, int dayOfWeek, unsigned long epochTime) {
+  time_t utcCalc = epochTime;
   Serial.write('&');
   for(int i = 0; i < time.length(); i++) {
     if(time[i] == ':') continue;
+    delay(1);
     Serial.print(time[i]);
   }
-  Serial.print(weekDay);
+  Serial.print(dayOfWeek);
+  Serial.print(month(utcCalc));
+  Serial.print(day(utcCalc));
 }
 
 /**

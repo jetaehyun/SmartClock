@@ -32,14 +32,18 @@ state st = normal;
 volatile int h = 0, m = 0, s = 0;
 volatile bool getTweet = false;
 int alarmH = -1, alarmM = -1;
-int dayOfWeekID = 0;
+int dayOfWeek = 0;
+int dayOfMonth = 0;
+int monthN = 0;
 long unsigned int startTime = 0;
 String hS, mS, sS;
+
+
 int weatherBuf[8];
 int alarmBuf[4];
+char messageBuf[64];
 
 RGBmatrixPanel matrix(A, B, C, D, CLK, LAT, OE, true, 64);
-char messageBuf[64];
 int16_t textX = matrix.width(), textMin = 0;
 
 void setup() {
@@ -58,7 +62,7 @@ void setup() {
 
   Serial.begin(115200);
   delay(10);
-  int timeBuf[7];
+  int timeBuf[9];
   int tCount = 0;
 
   while(1) {
@@ -74,7 +78,9 @@ void setup() {
   s = (timeBuf[4] * 10 + timeBuf[5]);
   m = timeBuf[2] * 10 + timeBuf[3];
   h = timeBuf[0] * 10 + timeBuf[1];
-  dayOfWeekID = timeBuf[6];
+  dayOfWeek = timeBuf[6];
+  dayOfMonth = timeBuf[8];
+  monthN = timeBuf[7];
 
   matrix.begin();
   matrix.setTextWrap(false);
@@ -94,6 +100,8 @@ void loop() {
   }
   switch(st) {
     case normal:
+      if(dayOfWeek >= 7) dayOfWeek = 0;
+      if(monthN >= 12) monthN = 1;  
       printTime();
       displayNews();
       break;
@@ -166,13 +174,13 @@ void printWeather() {
 
   // PRINT DAY OF WEEK 
   matrix.setCursor(2, 24);
-  matrix.print(nameOfDay(dayOfWeekID % 7));
+  matrix.print(nameOfDay(dayOfWeek % 7));
   matrix.setCursor(19, 8);
-  matrix.print(nameOfDay((dayOfWeekID + 1) % 7));
+  matrix.print(nameOfDay((dayOfWeek + 1) % 7));
   matrix.setCursor(34, 24);
-  matrix.print(nameOfDay((dayOfWeekID + 2) % 7)); 
+  matrix.print(nameOfDay((dayOfWeek + 2) % 7)); 
   matrix.setCursor(51, 8);
-  matrix.print(nameOfDay((dayOfWeekID + 3) % 7)); 
+  matrix.print(nameOfDay((dayOfWeek + 3) % 7)); 
 
   // PRINT TEMP IN F
   matrix.setCursor(2, 16);
@@ -228,7 +236,6 @@ void printTime() {
   if(h < 10) hS = '0' + hS;
   matrix.setCursor(0, 0);
   matrix.fillScreen(0);
-  matrix.setCursor(0, 0);
   matrix.setTextColor(matrix.Color333(255, 255, 255));
   matrix.setTextSize(2);
   matrix.print(hS);
@@ -239,22 +246,49 @@ void printTime() {
   matrix.setTextSize(1);
   matrix.setCursor(49, 7);
   matrix.print(sS);
+  matrix.setCursor(0, 16);
+  matrix.print(nameOfDay(dayOfWeek));
+  matrix.print(nameOfMonth(monthN));
+  matrix.print(dayOfMonth);
 }
 
 /**
  * @brief function to get the name of the day
  * 
- * @param day days since Jan 1, 1970. Day is obtained from EPOCH since then, obtained from ESP module
+ * @param dayWeek 0 - Sun
  * @return String returns the string of the day
  */
-String nameOfDay(int day) {
-  if(day == 0) return "TH";
-  else if(day == 1) return "FR";
-  else if(day == 2) return "SA";
-  else if(day == 3) return "SU";
-  else if(day == 4) return "MO";
-  else if(day == 5) return "TU";
-  else if(day == 6) return "WE";
+String nameOfDay(int dayWeek) {
+  if     (dayWeek == 0) return "SU";
+  else if(dayWeek == 1) return "MO";
+  else if(dayWeek == 2) return "TU";
+  else if(dayWeek == 3) return "WE";
+  else if(dayWeek == 4) return "TH";
+  else if(dayWeek == 5) return "FR";
+  else if(dayWeek == 6) return "SA";
+  else return "EMPTY";
+}
+
+/**
+ * @brief function to get the name of the month
+ * 
+ * @param m int correlating with the month number
+ * @return String 1 - January
+ */
+String nameOfMonth(int m) {
+  if     (m == 1) return " January ";
+  else if(m == 2) return " February ";
+  else if(m == 3) return " March ";
+  else if(m == 4) return " April ";
+  else if(m == 5) return " May ";
+  else if(m == 6) return " June ";
+  else if(m == 7) return " July ";
+  else if(m == 8) return " August ";
+  else if(m == 9) return " September ";
+  else if(m == 10) return " Octber ";
+  else if(m == 11) return " November ";
+  else if(m == 12) return " December ";
+  else return "EMPTY";
 }
 
 /**
@@ -349,6 +383,8 @@ ISR(TIMER5_COMPA_vect) {
       getTweet = true;
       if(h >= 24) {
         h = 0;
+        dayOfMonth++;
+        dayOfWeek++;
       } 
     }
   } 
