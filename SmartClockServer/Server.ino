@@ -19,9 +19,10 @@ const long utcOffsetInSeconds = -4 * 60 * 60;
 // Twitter Cred
 const char* twi_key = "";
 const char* twi_key_sec = "";
-const char* twi_token = "";
+const char* twi_token = "3666714796-";
 const char* twi_token_sec = "";
 char trendingTweet[64];
+bool getTweet = true;
 
 // OpenWeatherMap Cred/Data
 const String API = "a697a406b377b5a3c6c25ac287a60bde";
@@ -29,11 +30,9 @@ const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;
 const uint8_t MAX_FORECASTS = 4;
-int tempData[4]; 
-int weatherList[4];
+int weatherBuf[8];
 OpenWeatherMapForecast weatherClient;
 
-// Set web server port number to 80
 WiFiServer server(80);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, ntpServer, utcOffsetInSeconds);
@@ -61,6 +60,8 @@ void setup() {
    
   // Start the server
   server.begin();
+  delay(1);
+
   // Serial.println("Server started");
  
   // Print the IP address
@@ -69,15 +70,23 @@ void setup() {
   // Serial.print(WiFi.localIP());
   // Serial.println("/");    
 
-  delay(1);
   timeClient.update();
-  tc.startNTP();
   sendTime(timeClient.getFormattedTime(), timeClient.getEpochTime());
-  delay(500);
-  sendTrendingTweets();
+
 }
 
 void loop() {
+  if(Serial.available() > 0) {
+    while(Serial.available()) {
+      byte msg = Serial.read();
+      if(msg == 0x7E) getTweet = true; // DEC 126, Chr = ~
+    }
+  }
+
+  if(getTweet) { // will request new data every hour
+    sendTrendingTweets();
+    getTweet = false;
+  }
   // Check if a client has connected
   WiFiClient client = server.available();
   if (!client) {
@@ -93,7 +102,6 @@ void loop() {
    
   // read GET request 
   String req = client.readStringUntil('\n');
-  // Serial.println(req);  //print request
   client.flush();
  
   // Return the response
@@ -138,12 +146,9 @@ void loop() {
   } else if(req.indexOf("WEATHER") > 0) {
     Serial.write(0x3C); // DEC = 60, Chr = <
     retrieveWeather();
-    for(int i = 0; i < 4; i++) {
-      Serial.write(weatherList[i]); 
-    }
-    // Serial.write(0x3A); // DEC = 58, Chr = :
-    for(int i = 0; i < 4; i++) {
-      Serial.write(tempData[i]); // send byte of tempInfo
+    for(int i = 0; i < 8; i++) {
+      delay(1);
+      Serial.write(weatherBuf[i]); 
     }
     // for(int i = 0; i < 4; i++) Serial.printf("weatherID: %d, tempData: %d\n", weatherList[i], tempData[i]);
     
@@ -181,8 +186,8 @@ void retrieveWeather() {
   weatherClient.setAllowedHours(allowedHours, 2);
   uint8_t foundForecasts = weatherClient.updateForecastsById(data, API, LOCATION_ID, MAX_FORECASTS);
   for(uint8_t i = 0; i < foundForecasts; i++) {
-    tempData[i] = (int)data[i].temp;
-    weatherList[i] = getWeatherID(data[i].main.c_str());
+    weatherBuf[i + 4] = (int)data[i].temp;
+    weatherBuf[i] = getWeatherID(data[i].main.c_str());
   }
 
 }
@@ -192,26 +197,20 @@ void retrieveWeather() {
  * 
  */
 void sendTrendingTweets() {
+  tc.startNTP();
   String trend = tc.searchTwitter(); // API function call was modifed to return trending data
-  // Serial.println(trend);
-
   String trending = "";
   int end = 0;
+
   for(int i = 0; i < 3; i++) {
-    int hashTag = trend.indexOf('#', end + i);
+    int hashTag = 0;
+    if(i == 0) hashTag = trend.indexOf('#');
+    else hashTag = trend.indexOf('#', end + 1);
     int hashTagEnd = trend.indexOf(',', hashTag + 1) - 1;
     end = hashTagEnd;
-    trending += trend.indexOf(hashTag, hashTagEnd);
+    trending += trend.substring(hashTag, hashTagEnd);
   }
-  // int first = trend.indexOf('#');
-  // int firstEnd = trend.indexOf(',', first + 1) - 1;
-
-  // int sec = trend.indexOf('#', first + 1);
-  // int secEnd = trend.indexOf(',', sec + 1) - 1;
-
-  // int third = trend.indexOf('#', sec + 1);
-  // int thirdEnd = trend.indexOf(',', third + 1) - 1;
-  // String trending = trend.substring(first, firstEnd) + trend.substring(sec, secEnd) + trend.substring(third, thirdEnd);
+  
   trending.toCharArray(trendingTweet, trending.length() + 1);
   Serial.write(0x5E); // DEC = 43, Chr = ^
   for(int i = 0; i < trending.length(); i++) {
