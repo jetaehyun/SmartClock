@@ -69,7 +69,8 @@ void setup() {
     if(Serial.read() == '&') {
       systemDelay(100);
       while(Serial.available() > 0) {
-        timeBuf[tCount++] = Serial.read() - '0';  // receiving the decimal value of the char number.. so 51 - 48 = 3
+        if(tCount < 7) timeBuf[tCount++] = Serial.read() - '0';  // receiving the decimal value of the char number.. so 51 - 48 = 3
+        else timeBuf[tCount++] = (int)Serial.read();
       }
       break; 
     }
@@ -81,7 +82,6 @@ void setup() {
   dayOfWeek = timeBuf[6];
   dayOfMonth = timeBuf[8];
   monthN = timeBuf[7];
-
   matrix.begin();
   matrix.setTextWrap(false);
 }

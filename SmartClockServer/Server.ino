@@ -170,8 +170,8 @@ void sendTime(String time, int dayOfWeek, unsigned long epochTime) {
     Serial.print(time[i]);
   }
   Serial.print(dayOfWeek);
-  Serial.print(month(utcCalc));
-  Serial.print(day(utcCalc));
+  Serial.write(month(utcCalc));
+  Serial.write(day(utcCalc));
 }
 
 /**
