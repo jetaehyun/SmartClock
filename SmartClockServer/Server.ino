@@ -26,7 +26,7 @@ char trendingTweet[64];
 bool getTweet = true;
 
 // OpenWeatherMap Cred/Data
-const String API = "a697a406b377b5a3c6c25ac287a60bde";
+const String API = "";
 const String LOCATION_ID = "4956184";
 const String LANGUAGE = "en";
 boolean isMETRIC = false;

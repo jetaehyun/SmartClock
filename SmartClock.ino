@@ -10,18 +10,6 @@
 #define C   A2
 #define D   A3
 
-
-/**
- * TODO: Things still needed
- * - Make weather display better
- *  - Display rgb value of the temp???
- * 
- * 
- * TODO: Things to worry about later
- * - Clean up code
- * 
- */
-
 enum state {
   normal,
   checkWeather,
@@ -53,11 +41,11 @@ void setup() {
   cli();
   TCCR5A = 0;
   TCCR5B = 0;
-  TCNT5 = 0; //set counter value to 0
-  OCR5A = 15624; // set compare match register for 1Hz, output compare register
-  TCCR5B |= (1 << WGM12); // set timer to CTC mode
+  TCNT5 = 0;                           //set counter value to 0
+  OCR5A = 15624;                       // set compare match register for 1Hz, output compare register
+  TCCR5B |= (1 << WGM12);              // set timer to CTC mode
   TCCR5B |= (1 << CS12) | (1 << CS10); // set to 1024 prescalar mode
-  TIMSK5 |= (1 << OCIE5A); // enable timer compare interrupt
+  TIMSK5 |= (1 << OCIE5A);             // enable timer compare interrupt
   sei();
 
   Serial.begin(115200);
@@ -116,6 +104,10 @@ void loop() {
   matrix.swapBuffers(true);
 }
 
+/**
+ * @brief function to scroll text across the bottom section of the screen
+ * 
+ */
 void displayNews() {
   if((--textX) < textMin) textX = matrix.width();
   matrix.setTextColor(matrix.ColorHSV(45, 255, 255, true));
@@ -182,7 +174,7 @@ void printWeather() {
   matrix.setCursor(51, 8);
   matrix.print(nameOfDay((dayOfWeek + 3) % 7)); 
 
-  // PRINT TEMP IN F
+  // PRINT TEMP(F)
   matrix.setCursor(2, 16);
   matrix.print(weatherBuf[4]);
   matrix.setCursor(19, 0);
